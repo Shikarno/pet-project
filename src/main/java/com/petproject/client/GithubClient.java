@@ -29,15 +29,10 @@ public class GithubClient {
 
     private static final Pattern LINK_PATTERN = Pattern.compile(".*<(.*)>; rel=\"next\".*");
 
-    @Autowired
     private WebClient webClient;
 
     public Flux<GithubRepository> getRepos(String userName) {
-        Flux<ResponseEntity<Flux<GithubRepository>>> response = webClient.get()
-                .uri(getRepositoriesUri(userName))
-                .accept(MediaType.APPLICATION_JSON)
-                .retrieve()
-                .toEntityFlux(GithubRepository.class)
+        Flux<ResponseEntity<Flux<GithubRepository>>> response = getFirstPage(userName)
                 .expand(fluxResponseEntity -> getNextPages(fluxResponseEntity, GithubRepository.class));
 
         return response.flatMap(responseEntity -> {
@@ -45,6 +40,30 @@ public class GithubClient {
             return body != null ? body : Flux.empty();
         });
 
+    }
+
+    private Mono<ResponseEntity<Flux<GithubRepository>>> getFirstPage(String userName) {
+        return webClient.get()
+                .uri(getRepositoriesUri(userName))
+                .accept(MediaType.APPLICATION_JSON)
+                .retrieve()
+                .toEntityFlux(GithubRepository.class);
+    }
+
+    private <T> Publisher<ResponseEntity<Flux<T>>> getNextPages(ResponseEntity<Flux<T>> fluxResponseEntity, Class<T> entityClass) {
+        List<String> links = fluxResponseEntity.getHeaders().get("link");
+        if (links != null) {
+            for (String link : links) {
+                Matcher m = LINK_PATTERN.matcher(link);
+                if (m.matches()) {
+                    return webClient.get()
+                            .uri(URI.create(m.group(1)))
+                            .retrieve()
+                            .toEntityFlux(entityClass);
+                }
+            }
+        }
+        return Flux.empty();
     }
 
     public Flux<GithubBranch> getBranches(String userName, String repository) {
@@ -66,22 +85,6 @@ public class GithubClient {
         return getEntity(getUserUri(userName), GithubUser.class)
                 .filter(githubUserResponseEntity -> githubUserResponseEntity.getStatusCode().isSameCodeAs(HttpStatus.OK))
                 .mapNotNull(HttpEntity::getBody);
-    }
-
-    private <T> Publisher<ResponseEntity<Flux<T>>> getNextPages(ResponseEntity<Flux<T>> fluxResponseEntity, Class<T> entityClass) {
-        List<String> links = fluxResponseEntity.getHeaders().get("link");
-        if (links != null) {
-            for (String link : links) {
-                Matcher m = LINK_PATTERN.matcher(link);
-                if (m.matches()) {
-                    return webClient.get()
-                            .uri(URI.create(m.group(1)))
-                            .retrieve()
-                            .toEntityFlux(entityClass);
-                }
-            }
-        }
-        return Flux.empty();
     }
 
     private <T> Mono<ResponseEntity<T>> getEntity(Function<UriBuilder, URI> uriFunction, Class<T> entityClass) {
