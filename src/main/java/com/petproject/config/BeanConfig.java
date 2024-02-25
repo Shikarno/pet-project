@@ -10,7 +10,7 @@ public class BeanConfig {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
 
-    private static final String AUTHORIZATION_HEADER_VALUE = "Bearer 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";
+    private static final String AUTHORIZATION_HEADER_VALUE = "Bearer " + System.getenv("GITHUB_TOKEN");
 
     private static final String X_GIT_HUB_API_VERSION_HEADER = "X-GitHub-Api-Version";
 

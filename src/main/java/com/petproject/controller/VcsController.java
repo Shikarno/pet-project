@@ -1,8 +1,12 @@
 package com.petproject.controller;
 
+import com.petproject.model.Response;
 import com.petproject.service.VcsServiceLocator;
 import com.petproject.service.exception.UserNotFoundException;
-import com.petproject.model.Response;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +23,13 @@ public class VcsController {
     @Autowired
     VcsServiceLocator vcsServiceLocator;
 
+    @Operation(summary = "Get all user's repositories names which are not forks along with branches names")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved data"),
+            @ApiResponse(responseCode = "404", description = "Data not found"),
+            @ApiResponse(responseCode = "406", description = "Media type is not supported", content = @Content),
+            @ApiResponse(responseCode = "500", description = "Internal error")
+    })
     @GetMapping(value = "/{vcs}/{userName}/repositories",  produces = {"application/json"})
     public Mono<ResponseEntity<Response>> getAllRepositories(@PathVariable String vcs, @PathVariable String userName) {
         return vcsServiceLocator.getService(vcs)
